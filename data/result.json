@@ -28,11 +28,12 @@
         },
         {
           "type": "plain",
-          "text": " - Boiler Room Palestine\nПервым будет - Muqata’a. Этот лайв у меня на репите почти весь декабрь. \n\nИди и слушай "
+          "text": " - Boiler Room Palestine\nFirst will be Muqata’a. This live is on repeat whole December."
         },
         {
-          "type": "link",
-          "text": "https://www.youtube.com/watch?v=u3dkjq_wdaE&feature=youtu.be"
+            "type": "text_link",
+            "text": "Youtube",
+            "href": "https://www.youtube.com/watch?v=u3dkjq_wdaE"
         }
       ]
     },
@@ -127,12 +128,12 @@
           "text": "- The Fifty Eleven Project\n. Очень, для меня неожиданный и крутой, альбом от Kasper Bjørke Quartet - The Fifty Eleven Project. \n\n"
         },
         {
-          "type": "link",
+          "type": "text_link",
           "text": "Apple Music",
           "href": "https://music.apple.com/album/kasper-bj%C3%B8rke-quartet-the-fifty-eleven-project/1421904399"
         },
         {
-          "type": "link",
+            "type": "text_link",
           "text": "Bandcamp",
           "href": "https://kasperbjorke.bandcamp.com/album/the-fifty-eleven-project"
         }
@@ -155,12 +156,12 @@
           "text": "- Krasnaya Polyana / 37 TUNES\nЕсли вдруг ты сегодня завернут в плед,  в кружке глинвейн а перед глазами снежные вершины - вот отличный саундтрек.\n\n"
         },
         {
-          "type": "link",
+            "type": "text_link",
           "text": "Youtube (live)",
           "href": "https://www.youtube.com/watch?v=yo2zLZkWmhE"
         },
         {
-          "type": "link",
+            "type": "text_link",
           "text": "SoundCloud",
           "href": "https://soundcloud.com/37tunes/ishome"
         }

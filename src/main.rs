@@ -7,17 +7,21 @@ use convert_case::{Case, Casing};
 struct ExportData {
     artist: Option<String>,
     album: Option<String>,
+    description: String,
     tags: Vec<String>,
     date: DateTime<Utc>,
+    image: Option<String>
 }
 
 impl ExportData {
-    pub fn new(date: DateTime<Utc>) -> Self {
+    pub fn new(date: DateTime<Utc>, image: Option<String>) -> Self {
         ExportData {
             artist: None,
             album: None,
-            date,
+            description: String::new(),
             tags: vec![],
+            date,
+            image,
         }
     }
 }
@@ -33,7 +37,7 @@ fn main() {
     let import: ImportData = ImportData::from_file("./data/result.json");
     for message in import.messages {
         if let Messages::Message(user_message) = message {
-            let mut export_data = ExportData::new(user_message.date);
+            let mut export_data = ExportData::new(user_message.date, user_message.photo);
             let mut has_links: bool = false;
             for text_entity in user_message.text_entities {
                 match text_entity {
