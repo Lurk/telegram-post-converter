@@ -1,4 +1,5 @@
 mod telegram_export;
+use chrono::{DateTime, Utc};
 use telegram_export::{ImportData, Messages, Text};
 use convert_case::{Case, Casing};
 
@@ -7,13 +8,15 @@ struct ExportData {
     artist: Option<String>,
     album: Option<String>,
     tags: Vec<String>,
+    date: DateTime<Utc>,
 }
 
 impl ExportData {
-    pub fn new() -> Self {
+    pub fn new(date: DateTime<Utc>) -> Self {
         ExportData {
             artist: None,
             album: None,
+            date,
             tags: vec![],
         }
     }
@@ -30,7 +33,7 @@ fn main() {
     let import: ImportData = ImportData::from_file("./data/result.json");
     for message in import.messages {
         if let Messages::Message(user_message) = message {
-            let mut export_data = ExportData::new();
+            let mut export_data = ExportData::new(user_message.date);
             let mut has_links: bool = false;
             for text_entity in user_message.text_entities {
                 match text_entity {

@@ -1,8 +1,21 @@
+use chrono::prelude::*;
+use serde::{Deserialize, Deserializer};
+use serde_aux::prelude::*;
 use std::{fs::File, io::Read};
 
-use chrono::prelude::*;
-use serde::Deserialize;
-use serde_aux::prelude::*;
+pub fn deserialize_datetime_utc_from_seconds<'de, D>(
+    deserializer: D,
+) -> Result<chrono::DateTime<chrono::Utc>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let number = deserialize_number_from_string::<i64, D>(deserializer)?;
+
+    Ok(DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(number, 0),
+        Utc,
+    ))
+}
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct SimpleText {
@@ -29,7 +42,7 @@ pub struct ServiceMessage {
     pub id: usize,
     #[serde(
         rename = "date_unixtime",
-        deserialize_with = "deserialize_datetime_utc_from_milliseconds"
+        deserialize_with = "deserialize_datetime_utc_from_seconds"
     )]
     pub date: DateTime<Utc>,
 }
@@ -39,7 +52,7 @@ pub struct UserMessage {
     pub id: usize,
     #[serde(
         rename = "date_unixtime",
-        deserialize_with = "deserialize_datetime_utc_from_milliseconds"
+    deserialize_with = "deserialize_datetime_utc_from_seconds"
     )]
     pub date: DateTime<Utc>,
     pub photo: Option<String>,
@@ -69,7 +82,6 @@ impl ImportData {
         let mut file = File::open(path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
-
         serde_json::from_str(&data).expect("JSON was not well-formatted")
     }
 }
