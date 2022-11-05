@@ -1,75 +1,104 @@
+mod export;
 mod telegram_export;
-use chrono::{DateTime, Utc};
-use telegram_export::{ImportData, Messages, Text};
+
+use cloudinary::{upload::UploadOptions, Cloudinary};
 use convert_case::{Case, Casing};
-
-#[derive(Debug)]
-struct ExportData {
-    artist: Option<String>,
-    album: Option<String>,
-    description: String,
-    tags: Vec<String>,
-    date: DateTime<Utc>,
-    image: Option<String>
-}
-
-impl ExportData {
-    pub fn new(date: DateTime<Utc>, image: Option<String>) -> Self {
-        ExportData {
-            artist: None,
-            album: None,
-            description: String::new(),
-            tags: vec![],
-            date,
-            image,
-        }
-    }
-}
+use dotenv::dotenv;
+use export::{Album, Export};
+use telegram_export::{ImportData, Messages, Text};
+use tokio::{self};
 
 fn clean_artist_name(mut hashtag: String) -> String {
-    if hashtag.starts_with('#'){
+    if hashtag.starts_with('#') {
         hashtag.remove(0);
     }
     hashtag.from_case(Case::Pascal).to_case(Case::Title)
 }
 
-fn main() {
+fn convert() -> Result<(), std::io::Error> {
     let import: ImportData = ImportData::from_file("./data/result.json");
+    let mut export: Export = Export { albums: vec![] };
     for message in import.messages {
         if let Messages::Message(user_message) = message {
-            let mut export_data = ExportData::new(user_message.date, user_message.photo);
+            let mut album = Album::new(user_message.date, user_message.photo);
             let mut has_links: bool = false;
             for text_entity in user_message.text_entities {
                 match text_entity {
                     Text::Hashtag(v) => {
                         let artist_name = clean_artist_name(v.text);
-                        if export_data.artist.is_none() {
-                            export_data.artist = Some(artist_name.clone());
-                        }
-                        export_data.tags.push(artist_name);
+                        album.artist.push(artist_name.clone());
+                        album.tags.push(artist_name);
                     }
                     Text::Plain(v) => {
                         let text = v.text.trim_start();
-                        if export_data.artist.is_some() && text.starts_with('-') {
+                        if !album.artist.is_empty() && text.starts_with('-') {
                             let message_parts: Vec<&str> = text.split('\n').collect();
-                            if let Some(album) = message_parts.first() {
-                                let mut album_without_minus = album.to_string();
+                            if let Some((head, tail)) = message_parts.split_first() {
+                                let mut album_without_minus = head.to_string();
                                 album_without_minus.remove(0);
-                                export_data.album = Some(album_without_minus.trim().to_string());
+                                album.name = Some(album_without_minus.trim().to_string());
+                                album.description.push_str(&tail.join("\n"));
                             }
+                        } else {
+                            album.description.push_str(text)
                         }
                     }
-                    Text::TextLink(_) => {
+                    Text::TextLink(link) => {
+                        album.links.insert(link.text, link.href);
                         has_links = true;
                     }
-                    Text::Link(_) => {
+                    Text::Link(link) => {
+                        album.links.insert(link.text.clone(), link.text);
                         has_links = true;
                     }
                 }
             }
-            if export_data.artist.is_some() && has_links {
-                println!("{:?}", export_data);
+            if !album.artist.is_empty() && has_links {
+                export.albums.push(album);
             }
         }
+    }
+    export.save("./data/export.json")
+}
+
+async fn upload(mut album: Album) -> Album {
+    let cloudinary = Cloudinary::new(
+        dotenv::var("api_key").unwrap(),
+        dotenv::var("cloud_name").unwrap(),
+        dotenv::var("api_secret").unwrap(),
+    );
+    let public_id = format!(
+        "{} {}",
+        album.artist.join(" "),
+        album.name.as_ref().unwrap()
+    );
+    let options = UploadOptions::new()
+        .add_tags(&["music".to_string()])
+        .set_folder("music".to_string())
+        .set_public_id(public_id.to_case(Case::Pascal));
+
+    let mut path = "./data/".to_string();
+    path.push_str(&album.image.unwrap());
+    let result = cloudinary.upload_image(path, options).await;
+    album.image = Some(result.url);
+    album.clone()
+}
+
+#[tokio::main]
+async fn main() {
+    dotenv().ok();
+    let export = Export::from_file("./data/export.json");
+    let mut done: Export = Export::from_file("./data/done.json");
+    let albums: Vec<Album> = export
+        .albums
+        .into_iter()
+        .filter(|album| album.ready)
+        .collect();
+
+    let mut albums = futures::future::join_all(albums.iter().cloned().map(upload)).await;
+    done.albums.append(&mut albums);
+    match done.save("./data/done.json") {
+        Ok(_) => println!("{:?}", done),
+        Err(err) => println!("{}", err),
     }
 }

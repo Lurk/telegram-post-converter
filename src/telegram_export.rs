@@ -52,7 +52,7 @@ pub struct UserMessage {
     pub id: usize,
     #[serde(
         rename = "date_unixtime",
-    deserialize_with = "deserialize_datetime_utc_from_seconds"
+        deserialize_with = "deserialize_datetime_utc_from_seconds"
     )]
     pub date: DateTime<Utc>,
     pub photo: Option<String>,
