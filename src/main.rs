@@ -98,7 +98,20 @@ async fn main() {
     let mut albums = futures::future::join_all(albums.iter().cloned().map(upload)).await;
     done.albums.append(&mut albums);
     match done.save("./data/done.json") {
-        Ok(_) => println!("{:?}", done),
+        Ok(_) => {
+            println!("done.json is saved");
+            let mut export = Export::from_file("./data/export.json");
+            let albums: Vec<Album> = export
+                .albums
+                .into_iter()
+                .filter(|album| !album.ready)
+                .collect();
+            export.albums = albums;
+            match export.save("./data/export.json") {
+                Ok(_) => println!("export.json is saved"),
+                Err(err) => println!("{}", err),
+            }
+        }
         Err(err) => println!("{}", err),
     }
 }
