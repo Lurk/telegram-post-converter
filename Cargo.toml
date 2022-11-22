@@ -17,3 +17,4 @@ cloudinary = {path = "/Users/Lurk/src/pets/cloudinary_rs"}
 tokio = {version = "1.21.2", features = ["full"]}
 dotenv = "0.15.0"
 futures = "0.3.25"
+slug = "0.1.4"

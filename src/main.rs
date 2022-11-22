@@ -1,10 +1,10 @@
 mod export;
 mod telegram_export;
 
-use cloudinary::{upload::UploadOptions, Cloudinary};
+use cloudinary::{upload::result::UploadResult, upload::UploadOptions, Cloudinary};
 use convert_case::{Case, Casing};
 use dotenv::dotenv;
-use export::{Album, Export};
+use export::{Album, AlbumWithSlug, Export, ExportAlbumWithSlug};
 use telegram_export::{ImportData, Messages, Text};
 use tokio::{self};
 
@@ -75,29 +75,37 @@ async fn upload(mut album: Album) -> Album {
     let options = UploadOptions::new()
         .add_tags(&["music".to_string()])
         .set_folder("music".to_string())
-        .set_public_id(public_id.to_case(Case::Pascal));
+        .set_public_id(slug::slugify(public_id.to_case(Case::Pascal)));
 
     let mut path = "./data/".to_string();
     path.push_str(&album.image.unwrap());
-    let result = cloudinary.upload_image(path, options).await;
-    album.image = Some(result.url);
+    match cloudinary.upload_image(path, &options).await {
+        UploadResult::Succes(result) => album.image = Some(result.url),
+        UploadResult::Error(e) => panic!("error {:?} while trying to upload {:?}", e, options),
+    }
+
     album.clone()
 }
 
-#[tokio::main]
-async fn main() {
+async fn convert_to_data() {
     dotenv().ok();
     let export = Export::from_file("./data/export.json");
-    let mut done: Export = Export::from_file("./data/done.json");
+    let mut data = ExportAlbumWithSlug::from_file("./data/data.json");
     let albums: Vec<Album> = export
         .albums
         .into_iter()
         .filter(|album| album.ready)
         .collect();
 
-    let mut albums = futures::future::join_all(albums.iter().cloned().map(upload)).await;
-    done.albums.append(&mut albums);
-    match done.save("./data/done.json") {
+    let albums = futures::future::join_all(albums.iter().cloned().map(upload)).await;
+    data.albums.append(
+        &mut albums
+            .iter()
+            .cloned()
+            .map(|a| AlbumWithSlug::from_album(&a))
+            .collect(),
+    );
+    match data.save("./data/data.json") {
         Ok(_) => {
             println!("done.json is saved");
             let mut export = Export::from_file("./data/export.json");
@@ -114,4 +122,9 @@ async fn main() {
         }
         Err(err) => println!("{}", err),
     }
+}
+
+#[tokio::main]
+async fn main() {
+    convert_to_data().await
 }
